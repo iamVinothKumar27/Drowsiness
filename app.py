@@ -4,8 +4,11 @@ import numpy as np
 import mediapipe as mp
 from scipy.spatial import distance
 from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
-import streamlit as st
+from pygame import mixer
 import time
+
+# Initialize Pygame mixer once
+
 
 # EAR & MAR thresholds
 thresh_ear = 0.25
@@ -40,16 +43,11 @@ class VideoTransformer(VideoTransformerBase):
         self.yawn_count = 0
         self.start_time = None
         self.drowsiness_time = 0
-        self.show_drowsy_alert = False
-        self.show_yawn_alert = False
 
     def transform(self, frame):
         img = frame.to_ndarray(format="bgr24")
         rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         results = face_mesh.process(rgb_img)
-
-        self.show_drowsy_alert = False
-        self.show_yawn_alert = False
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
@@ -76,29 +74,35 @@ class VideoTransformer(VideoTransformerBase):
                 cv2.polylines(img, [cv2.convexHull(np.array(right_eye))], True, (0, 255, 0), 1)
                 cv2.polylines(img, [cv2.convexHull(np.array(mouth))], True, (255, 0, 0), 1)
 
-                # Drowsiness detection
+                # Drowsiness detection logic
                 if ear < thresh_ear:
                     self.flag += 1
+                    cv2.putText(img, "CLOSED EYE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
                     if self.flag >= frame_check:
                         if self.start_time is None:
                             self.start_time = time.time()
                         else:
                             self.drowsiness_time = time.time() - self.start_time
-                        if self.drowsiness_time >= drowsiness_limit:
-                            self.show_drowsy_alert = True
-                    cv2.putText(img, "CLOSED EYE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+                        if self.drowsiness_time >= drowsiness_limit :
+                            mixer.music.play()
+
+                        cv2.putText(img, "DROWSINESS ALERT!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                 else:
                     self.flag = 0
                     self.start_time = None
                     self.drowsiness_time = 0
+                    
                     cv2.putText(img, "OPEN EYE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-                # Yawning detection
+                # Yawn detection
                 if mar >= thresh_mar:
                     self.yawn_count += 1
-                    if self.yawn_count >= yawn_limit:
-                        self.show_yawn_alert = True
                     cv2.putText(img, "YAWNING", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                    if self.yawn_count >= yawn_limit :
+                        
+                        cv2.putText(img, "YAWN ALERT!", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
                 else:
                     self.yawn_count = 0
 
@@ -107,16 +111,7 @@ class VideoTransformer(VideoTransformerBase):
 
         return img
 
-st.set_page_config(page_title="Drowsiness Detector")
-st.title("🛡 Real-Time Drowsiness Detection")
-
-ctx = webrtc_streamer(key="key", video_transformer_factory=VideoTransformer)
-
-# Display alert messages in sidebar
-if ctx.video_transformer:
-    if ctx.video_transformer.show_drowsy_alert:
-        st.sidebar.error("😴 Drowsiness Detected!")
-    elif ctx.video_transformer.show_yawn_alert:
-        st.sidebar.warning("😮 Yawning Detected!")
-    else:
-        st.sidebar.success("✅ Normal Status")
+# Streamlit UI
+import streamlit as st
+st.title("Real-Time Drowsiness Detection")
+webrtc_streamer(key="key", video_transformer_factory=VideoTransformer)
