@@ -1,8 +1,8 @@
-opencv-python
 streamlit
 streamlit-webrtc
-av
+opencv-python-headless==4.8.1.78
 mediapipe
 pygame
 numpy
 scipy
+av
