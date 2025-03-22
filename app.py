@@ -44,13 +44,14 @@ class VideoTransformer(VideoTransformerBase):
         self.start_time = None
         self.drowsiness_time = 0
 
-    async def recv(self, frame):
+    def transform(self, frame):
         img = frame.to_ndarray(format="bgr24")
         rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         results = face_mesh.process(rgb_img)
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
+                # Landmarks for eyes and mouth
                 left_eye_indices = [33, 160, 158, 133, 153, 144]
                 right_eye_indices = [362, 385, 387, 263, 373, 380]
                 mouth_indices = [61, 291, 78, 308, 13, 14, 17, 0]
@@ -73,6 +74,7 @@ class VideoTransformer(VideoTransformerBase):
                 cv2.polylines(img, [cv2.convexHull(np.array(right_eye))], True, (0, 255, 0), 1)
                 cv2.polylines(img, [cv2.convexHull(np.array(mouth))], True, (255, 0, 0), 1)
 
+                # Drowsiness detection logic
                 if ear < thresh_ear:
                     self.flag += 1
                     cv2.putText(img, "CLOSED EYE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
@@ -83,18 +85,21 @@ class VideoTransformer(VideoTransformerBase):
                         else:
                             self.drowsiness_time = time.time() - self.start_time
 
-                        if self.drowsiness_time >= drowsiness_limit:
-                            cv2.putText(img, "DROWSINESS ALERT!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                        if self.drowsiness_time >= drowsiness_limit :
+                           cv2.putText(img, "DROWSINESS ALERT!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                 else:
                     self.flag = 0
                     self.start_time = None
                     self.drowsiness_time = 0
+                    
                     cv2.putText(img, "OPEN EYE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
+                # Yawn detection
                 if mar >= thresh_mar:
                     self.yawn_count += 1
                     cv2.putText(img, "YAWNING", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-                    if self.yawn_count >= yawn_limit:
+                    if self.yawn_count >= yawn_limit :
+                        
                         cv2.putText(img, "YAWN ALERT!", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
                 else:
                     self.yawn_count = 0
@@ -102,8 +107,7 @@ class VideoTransformer(VideoTransformerBase):
                 cv2.putText(img, f"EAR: {ear:.2f}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 cv2.putText(img, f"MAR: {mar:.2f}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
-
+        return img
 
 # Streamlit UI
 import streamlit as st
