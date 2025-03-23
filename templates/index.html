@@ -1,40 +1,33 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Drowsiness Detection</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <title>Drowsiness Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>Real-Time Drowsiness Detection</h1>
-  <video id="webcam" autoplay playsinline width="640" height="480"></video>
-  <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
-  <img id="processed" />
+    <h1>Real-Time Drowsiness Detection</h1>
+    <img src="{{ url_for('video_feed') }}" width="640" height="480">
+    <audio id="alert-sound" src="{{ url_for('static', filename='music.wav') }}"></audio>
 
-  <script>
-    const video = document.getElementById('webcam');
-    const canvas = document.getElementById('canvas');
-    const processed = document.getElementById('processed');
-    const ctx = canvas.getContext('2d');
+    <script>
+        const audio = document.getElementById('alert-sound');
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-      });
-
-    setInterval(() => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg');
-
-      fetch('/process_frame', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl })
-      })
-      .then(res => res.blob())
-      .then(blob => {
-        processed.src = URL.createObjectURL(blob);
-      });
-    }, 500); // every 500ms
-  </script>
+        setInterval(() => {
+            fetch('/check_alert')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.alert) {
+                        if (audio.paused) {
+                            audio.play();
+                        }
+                    } else {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                });
+        }, 1000);
+    </script>
 </body>
 </html>
