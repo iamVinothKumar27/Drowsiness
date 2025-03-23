@@ -1,33 +1,28 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Drowsiness Detection</title>
+    <title>Real-Time Drowsiness Detection</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <h1>Real-Time Drowsiness Detection</h1>
-    <img src="{{ url_for('video_feed') }}" width="640" height="480">
-    <audio id="alert-sound" src="{{ url_for('static', filename='music.wav') }}"></audio>
+
+    <!-- Video element for webcam -->
+    <div class="video-container">
+        <video id="webcam" autoplay playsinline width="640" height="480" style="border: 4px solid #00FF7F; border-radius: 10px;"></video>
+    </div>
 
     <script>
-        const audio = document.getElementById('alert-sound');
-
-        setInterval(() => {
-            fetch('/check_alert')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.alert) {
-                        if (audio.paused) {
-                            audio.play();
-                        }
-                    } else {
-                        audio.pause();
-                        audio.currentTime = 0;
-                    }
-                });
-        }, 1000);
+        // Request access to webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                document.getElementById("webcam").srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam:", err);
+                alert("Unable to access camera. Please allow camera permission.");
+            });
     </script>
 </body>
 </html>
