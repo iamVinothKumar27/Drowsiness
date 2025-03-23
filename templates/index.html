@@ -1,28 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Real-Time Drowsiness Detection</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>Drowsiness Detection</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Real-Time Drowsiness Detection</h1>
+  <h1>Real-Time Drowsiness Detection</h1>
+  <video id="webcam" autoplay playsinline width="640" height="480"></video>
+  <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+  <img id="processed" />
 
-    <!-- Video element for webcam -->
-    <div class="video-container">
-        <video id="webcam" autoplay playsinline width="640" height="480" style="border: 4px solid #00FF7F; border-radius: 10px;"></video>
-    </div>
+  <script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const processed = document.getElementById('processed');
+    const ctx = canvas.getContext('2d');
 
-    <script>
-        // Request access to webcam
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                document.getElementById("webcam").srcObject = stream;
-            })
-            .catch(err => {
-                console.error("Error accessing webcam:", err);
-                alert("Unable to access camera. Please allow camera permission.");
-            });
-    </script>
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      });
+
+    setInterval(() => {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+
+      fetch('/process_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl })
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        processed.src = URL.createObjectURL(blob);
+      });
+    }, 500); // every 500ms
+  </script>
 </body>
 </html>
